@@ -1,7 +1,4 @@
-import type {
-  ICanvas,
-  Mirror,
-} from 'rrweb-snapshot';
+import type { ICanvas, Mirror } from 'rrweb-snapshot';
 import type {
   blockClass,
   canvasManagerMutationCallback,
@@ -158,8 +155,7 @@ export class CanvasManager {
     };
 
     this.options = options;
-    this.useManualBitmapResize =
-      CanvasManager.shouldUseManualBitmapResize(win);
+    this.useManualBitmapResize = CanvasManager.shouldUseManualBitmapResize(win);
 
     if (recordCanvas && sampling === 'all') {
       this.debug(null, 'initializing canvas mutation observer', { sampling });
@@ -409,12 +405,18 @@ export class CanvasManager {
       return matchedVideos;
     };
 
+    const scheduleTakeSnapshots = () => {
+      rafId = requestAnimationFrame((timestamp) => {
+        void takeSnapshots(timestamp);
+      });
+    };
+
     const takeSnapshots = async (timestamp: DOMHighResTimeStamp) => {
       if (
         lastSnapshotTime &&
         timestamp - lastSnapshotTime < timeBetweenSnapshots
       ) {
-        rafId = requestAnimationFrame(takeSnapshots);
+        scheduleTakeSnapshots();
         return;
       }
       lastSnapshotTime = timestamp;
@@ -538,10 +540,10 @@ export class CanvasManager {
       );
       await Promise.all(promises).catch(console.error);
 
-      rafId = requestAnimationFrame(takeSnapshots);
+      scheduleTakeSnapshots();
     };
 
-    rafId = requestAnimationFrame(takeSnapshots);
+    scheduleTakeSnapshots();
     this.resetObservers = () => {
       canvasContextReset();
       if (rafId) {
@@ -616,7 +618,8 @@ export class CanvasManager {
     if (!valuesWithType || id === -1) return;
 
     const values = valuesWithType.map((value) => {
-      const { type, ...rest } = value;
+      const { type: omittedType, ...rest } = value;
+      void omittedType;
       return rest;
     });
     const { type } = valuesWithType[0];
@@ -649,9 +652,11 @@ export class CanvasManager {
     height: number,
   ): HTMLCanvasElement | OffscreenCanvas | null {
     const OffscreenCanvasConstructor =
-      (this.options.win as IWindow & {
-        OffscreenCanvas?: typeof OffscreenCanvas;
-      }).OffscreenCanvas ||
+      (
+        this.options.win as IWindow & {
+          OffscreenCanvas?: typeof OffscreenCanvas;
+        }
+      ).OffscreenCanvas ||
       (typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : undefined);
 
     if (OffscreenCanvasConstructor) {
